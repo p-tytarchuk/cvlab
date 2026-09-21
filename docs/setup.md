@@ -185,9 +185,13 @@ ABI" above. Rebuild with `./scripts/build_third_party.sh --clean`.
 `CVLAB_WITH_ONNXRUNTIME`, `CVLAB_WITH_OPENVINO` and `CVLAB_WITH_TENSORRT` are
 **OFF by default** and not yet implemented.
 
-- **ONNX Runtime / OpenVINO** — building either from source takes a long time.
-  Both will support two modes: a pinned prebuilt binary (fast) or a source
-  build (slow, fully hermetic).
+- **ONNX Runtime / OpenVINO** — both will be **built from source**, pinned by
+  URL and SHA256 like every other dependency. This keeps the build fully
+  hermetic and matches your toolchain, so both work under sanitizers and on
+  arm64 (Intel ships no official OpenVINO prebuilt for Apple Silicon).
+  The cost is a long first build — expect tens of minutes for ONNX Runtime
+  and over an hour for OpenVINO, each pulling a large dependency tree. CI
+  caches the install prefix, so that cost is paid once per version bump.
 - **TensorRT / CUDA** — cannot be downloaded or built automatically. It stays
   an optional *system* dependency found with `find_package`, guarded to Linux
   with an NVIDIA GPU.

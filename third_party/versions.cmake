@@ -86,7 +86,11 @@ cvlab_declare_library(
 # ---------------------------------------------------------------------------
 # Optional libraries (OFF by default; see docs/setup.md)
 # ---------------------------------------------------------------------------
-# ONNX Runtime and OpenVINO are added here once the prebuilt-vs-source
-# decision is made. TensorRT is never declared here: it cannot be downloaded
-# automatically and stays an optional system dependency found via
-# find_package() on Linux + NVIDIA only.
+# ONNX Runtime and OpenVINO will be declared here and BUILT FROM SOURCE,
+# pinned by URL + SHA256 like everything else: hermetic, toolchain-matched,
+# sanitizer-friendly, and arm64-capable (Intel ships no official OpenVINO
+# prebuilt for Apple Silicon). Both are long builds - see docs/setup.md.
+#
+# TensorRT is never declared here: it cannot be downloaded automatically and
+# stays an optional system dependency found via find_package() on Linux +
+# NVIDIA only.
