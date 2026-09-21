@@ -34,10 +34,10 @@ TEST(BenchmarkSmoke, RegistrationLinks) {
   ASSERT_NE(registered, nullptr);
 }
 
-// Proves the version symbol resolves at runtime, i.e. we linked a real library
-// and not just satisfied the compiler.
+// Proves a real library symbol resolves at runtime, i.e. we linked an actual
+// library and not just satisfied the compiler.
 TEST(BenchmarkSmoke, LibraryVersionSymbolResolves) {
-  const std::string version = benchmark::kExportedVersion;
+  const std::string version = benchmark::GetBenchmarkVersion();
   EXPECT_FALSE(version.empty());
 }
 
