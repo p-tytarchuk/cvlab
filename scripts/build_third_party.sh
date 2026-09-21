@@ -288,6 +288,23 @@ main() {
   printf '     libs:    %s\n\n' "${LIBS[*]-}"
 
   check_prerequisites
+
+  # CMake refuses to reuse a build tree that was configured with a different
+  # generator. That happens routinely: install ninja after a first build with
+  # make, and every later run would fail with "Does not match the generator
+  # used previously". Detect it and reset the tree instead of making the user
+  # delete caches by hand. Only the build tree is discarded - installed
+  # libraries and cached downloads are untouched.
+  local cache="${BUILD_DIR}/CMakeCache.txt"
+  if [[ -f "${cache}" ]]; then
+    local previous
+    previous="$(sed -n 's/^CMAKE_GENERATOR:INTERNAL=//p' "${cache}")"
+    if [[ -n "${previous}" && "${previous}" != "${GENERATOR}" ]]; then
+      info "Generator changed (${previous} -> ${GENERATOR}), resetting build tree"
+      rm -rf "${BUILD_DIR:?}"
+    fi
+  fi
+
   mkdir -p "${DOWNLOADS}" "${BUILD_DIR}" "${INSTALL_PREFIX}"
 
   if (( CLEAN )); then

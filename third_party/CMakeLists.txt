@@ -241,9 +241,17 @@ if(_build_opencv)
       -DOPENCV_DOWNLOADER_STRICT:BOOL=ON
       -DBUILD_opencv_world:BOOL=OFF
 
-      # Belt and braces against Homebrew/apt: ignore system prefixes entirely
-      # when searching for packages.
-      -DCMAKE_IGNORE_PATH:STRING=/opt/homebrew$<SEMICOLON>/opt/homebrew/bin$<SEMICOLON>/opt/homebrew/lib$<SEMICOLON>/opt/homebrew/include$<SEMICOLON>/usr/local$<SEMICOLON>/usr/local/bin$<SEMICOLON>/usr/local/lib$<SEMICOLON>/usr/local/include
+      # Belt and braces against Homebrew/apt: ignore the system LIBRARY and
+      # INCLUDE prefixes when searching for packages.
+      #
+      # Deliberately NOT listing /opt/homebrew/bin or /usr/local/bin: build
+      # tools live there. Ignoring them leaves CMake unable to find ninja
+      # ("unable to find a build program corresponding to Ninja"), because
+      # CMAKE_IGNORE_PATH applies to find_program() too, not just libraries.
+      -DCMAKE_IGNORE_PATH:STRING=/opt/homebrew$<SEMICOLON>/opt/homebrew/lib$<SEMICOLON>/opt/homebrew/include$<SEMICOLON>/opt/homebrew/opt$<SEMICOLON>/usr/local$<SEMICOLON>/usr/local/lib$<SEMICOLON>/usr/local/include
+      # Hand the sub-build the make program we already resolved, so it never
+      # has to search for it.
+      -DCMAKE_MAKE_PROGRAM:FILEPATH=${CMAKE_MAKE_PROGRAM}
       -DCMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH:BOOL=OFF
       -DCMAKE_FIND_FRAMEWORK:STRING=NEVER
       -DCMAKE_FIND_APPBUNDLE:STRING=NEVER

@@ -18,10 +18,14 @@ missing, prints the exact install command — it never runs `sudo` itself.
     xcode-select --install          # Apple Clang, git, make
     brew install cmake ninja
 
-Ninja is optional but recommended: the presets use it, and it is meaningfully
-faster than Make. Without it the script falls back to `Unix Makefiles` and
-warns. If you skip Ninja you must also pass `-G "Unix Makefiles"` to
-`cmake --preset`, because a preset's generator otherwise wins.
+Ninja is what the presets use, so install it: `cmake --preset debug` then
+works with no extra flags. Without it the build script falls back to
+`Unix Makefiles` and warns, and you must pass `-G "Unix Makefiles"` to
+`cmake --preset` yourself, because a preset's generator field otherwise wins.
+
+Installing Ninja after a first build with Make is handled: the script notices
+the generator changed and resets the third-party build tree. Installed
+libraries and cached downloads are kept, so only the build tree is redone.
 
 ### Ubuntu
 
@@ -34,16 +38,15 @@ the script fails with a clear message and the version it found.
 
 ## First build: what to expect
 
-Measured on an M-series Mac (14 cores, `Unix Makefiles`, archives already
-downloaded):
+Measured on an M-series Mac (14 cores, Ninja, archives already downloaded):
 
-| Step                          | Time    |
-| ----------------------------- | ------- |
-| googletest                    | ~5 s    |
-| google benchmark              | ~6 s    |
-| OpenCV (core, imgproc, imgcodecs) | ~42 s |
-| **Total third-party**         | **~53 s** |
-| cvlab configure + build + test | ~2 s   |
+| Step                              | Ninja     | Unix Makefiles |
+| --------------------------------- | --------- | -------------- |
+| googletest                        | ~3 s      | ~5 s           |
+| google benchmark                  | ~6 s      | ~6 s           |
+| OpenCV (core, imgproc, imgcodecs) | ~37 s     | ~42 s          |
+| **Total third-party**             | **~46 s** | **~53 s**      |
+| cvlab configure + build + test    | ~2 s      | ~2 s           |
 
 Add a one-time download of roughly 100 MB, almost all of it OpenCV.
 
@@ -155,6 +158,12 @@ The presets ask for Ninja. Install it (`brew install ninja`,
 
 A preset's `generator` field beats the `CMAKE_GENERATOR` environment
 variable, so `-G` on the command line is the way to override it.
+
+**`Does not match the generator used previously`**
+The third-party build tree was configured with a different generator — most
+often because you installed Ninja after a first build with Make. The build
+script detects this and resets the tree itself, so just re-run it. If you hit
+it in cvlab's own `build/` instead, `rm -rf build/` and reconfigure.
 
 **A SHA256 mismatch**
 See "Hash mismatches" in `third_party/README.md`. Delete the archive from
