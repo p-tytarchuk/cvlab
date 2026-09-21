@@ -13,6 +13,9 @@
 
 set -Eeuo pipefail
 
+# Note on ${arr[@]+"${arr[@]}"}: macOS ships bash 3.2, where expanding an
+# empty array as "${arr[@]}" under `set -u` aborts with "unbound variable".
+# The +-expansion form is the portable way to iterate a possibly-empty array.
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 THIRD_PARTY="${REPO_ROOT}/third_party"
 DOWNLOADS="${THIRD_PARTY}/downloads"
@@ -200,7 +203,7 @@ LIBS=()
 if (( ${#REQUESTED[@]} == 0 )); then
   LIBS=("${DEFAULT_LIBS[@]}")
 else
-  for lib in "${REQUESTED[@]}"; do
+  for lib in ${REQUESTED[@]+"${REQUESTED[@]}"}; do
     case "${lib}" in
       gtest|googletest) LIBS+=(googletest) ;;
       benchmark)        LIBS+=(benchmark) ;;
@@ -282,18 +285,18 @@ main() {
   printf '     type:    %s\n'   "${BUILD_TYPE}"
   printf '     jobs:    %s\n'   "${JOBS}"
   printf '     prefix:  %s\n'   "${INSTALL_PREFIX}"
-  printf '     libs:    %s\n\n' "${LIBS[*]}"
+  printf '     libs:    %s\n\n' "${LIBS[*]-}"
 
   check_prerequisites
   mkdir -p "${DOWNLOADS}" "${BUILD_DIR}" "${INSTALL_PREFIX}"
 
   if (( CLEAN )); then
-    for lib in "${LIBS[@]}"; do clean_library "${lib}"; done
+    for lib in ${LIBS[@]+"${LIBS[@]}"}; do clean_library "${lib}"; done
   fi
 
   # Skip anything already installed at the pinned version.
   local todo=()
-  for lib in "${LIBS[@]}"; do
+  for lib in ${LIBS[@]+"${LIBS[@]}"}; do
     if is_installed "${lib}"; then
       ok "${lib} $(pinned_version "${lib}") already installed, skipping"
     else
@@ -312,7 +315,7 @@ main() {
 
   # One CMake invocation per library keeps the per-library timing honest and
   # lets --clean of one library leave the others untouched.
-  for lib in "${todo[@]}"; do
+  for lib in ${todo[@]+"${todo[@]}"}; do
     local start=${SECONDS}
     info "Building ${lib} $(pinned_version "${lib}")"
 
