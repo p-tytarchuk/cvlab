@@ -7,7 +7,6 @@
       "name": "base",
       "hidden": true,
       "binaryDir": "${sourceDir}/build/${presetName}",
-      "_comment_generator": "Ninja is the default. Without it installed, export CMAKE_GENERATOR='Unix Makefiles' - the environment overrides this field, so the presets stay OS-neutral.",
       "generator": "Ninja",
       "cacheVariables": {
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
