@@ -1,0 +1,159 @@
+name: ci
+
+# Third-party libraries are the expensive part of a build here, so they are
+# cached on the hash of versions.cmake: a version bump invalidates the cache
+# automatically, and nothing else does.
+
+on:
+  # Automatic triggers disabled for now - re-enable by uncommenting below.
+  # push:
+  #   branches: [main, develop]
+  # pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: "ubuntu / gcc",   os: ubuntu-latest, preset: debug, cc: gcc,   cxx: g++ }
+          - { name: "ubuntu / clang", os: ubuntu-latest, preset: debug, cc: clang, cxx: clang++ }
+          - { name: "macos / clang",  os: macos-latest,  preset: debug, cc: clang, cxx: clang++ }
+
+    env:
+      CC: ${{ matrix.cc }}
+      CXX: ${{ matrix.cxx }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Ninja is the presets' generator. Runners do not all ship it.
+      - name: Install ninja
+        uses: seanmiddleditch/gha-setup-ninja@v5
+
+      # Identifies the platform for the cache key. The tag must match
+      # cvlab_host_tag() in cmake/Dependencies.cmake.
+      - name: Compute host tag
+        id: host
+        shell: bash
+        run: |
+          case "$(uname -s)" in
+            Darwin) os=macos ;;
+            Linux)  os=linux ;;
+          esac
+          case "$(uname -m)" in
+            x86_64|amd64)  arch=x86_64 ;;
+            arm64|aarch64) arch=arm64 ;;
+          esac
+          echo "tag=${os}-${arch}" >> "$GITHUB_OUTPUT"
+
+      # Cache the built prefix and the archive cache together: a hit skips
+      # the whole third-party build, a miss still reuses downloads.
+      - name: Cache third-party
+        uses: actions/cache@v4
+        with:
+          path: |
+            third_party/downloads
+            third_party/install
+          key: tp-${{ steps.host.outputs.tag }}-${{ matrix.cc }}-${{ hashFiles('third_party/versions.cmake') }}
+          restore-keys: |
+            tp-${{ steps.host.outputs.tag }}-${{ matrix.cc }}-
+
+      - name: Build third-party
+        run: ./scripts/build_third_party.sh
+
+      - name: Configure
+        run: cmake --preset ${{ matrix.preset }}
+
+      - name: Build
+        run: cmake --build --preset ${{ matrix.preset }}
+
+      - name: Test
+        run: ctest --preset ${{ matrix.preset }}
+
+      # Proves the acceptance criterion that the main build is independent of
+      # the dependency build: this must not rebuild any third-party library.
+      - name: Rebuild from clean build tree
+        shell: bash
+        run: |
+          rm -rf build/
+          cmake --preset ${{ matrix.preset }}
+          cmake --build --preset ${{ matrix.preset }}
+          ctest --preset ${{ matrix.preset }}
+
+  sanitizers:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: "asan / ubuntu", os: ubuntu-latest, preset: asan }
+          - { name: "asan / macos",  os: macos-latest,  preset: asan }
+          # TSan runs on Linux only: third-party code is built uninstrumented,
+          # so TSan is meaningful for cvlab's own threading code. See
+          # docs/setup.md for the caveat in full.
+          - { name: "tsan / ubuntu", os: ubuntu-latest, preset: tsan }
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install ninja
+        uses: seanmiddleditch/gha-setup-ninja@v5
+
+      - name: Compute host tag
+        id: host
+        shell: bash
+        run: |
+          case "$(uname -s)" in
+            Darwin) os=macos ;;
+            Linux)  os=linux ;;
+          esac
+          case "$(uname -m)" in
+            x86_64|amd64)  arch=x86_64 ;;
+            arm64|aarch64) arch=arm64 ;;
+          esac
+          echo "tag=${os}-${arch}" >> "$GITHUB_OUTPUT"
+
+      - name: Cache third-party
+        uses: actions/cache@v4
+        with:
+          path: |
+            third_party/downloads
+            third_party/install
+          key: tp-${{ steps.host.outputs.tag }}-default-${{ hashFiles('third_party/versions.cmake') }}
+          restore-keys: |
+            tp-${{ steps.host.outputs.tag }}-default-
+
+      - name: Build third-party
+        run: ./scripts/build_third_party.sh
+
+      - name: Configure
+        run: cmake --preset ${{ matrix.preset }}
+
+      - name: Build
+        run: cmake --build --preset ${{ matrix.preset }}
+
+      - name: Test
+        env:
+          # Leak detection is off on the ASan job: OpenCV's static
+          # initialisers report benign one-time allocations that are not
+          # cvlab's to fix. Turn it on when hunting a leak in your own code.
+          ASAN_OPTIONS: detect_leaks=0:abort_on_error=1
+          TSAN_OPTIONS: halt_on_error=1
+        run: ctest --preset ${{ matrix.preset }}
+
+  shellcheck:
+    name: shellcheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lint build script
+        run: shellcheck scripts/build_third_party.sh

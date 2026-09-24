@@ -8,6 +8,13 @@
 - Memory leaks, dangling pointers, use-after-free; tools: ASan, Valgrind
 - Memory pools / preallocated buffers for image frames, zero-copy design
 - Memory alignment (important for SIMD and accelerators)
+- Practise plan: `part1_modern_cpp/memory_management/practise.md` — 7
+  warm-up tasks (stack vs heap, move semantics, `std::forward`, dangling
+  pointer/UAF, leaks, memory pool, alignment); the integration project has
+  its own `part1_modern_cpp/mini_frame_pipeline/practise.md`
+- Theory for all of the above, including the macOS arm64 vs Ubuntu x86_64
+  differences that affect tasks 4, 5 and 7:
+  `part1_modern_cpp/memory_management/theory.pdf`
 
 ### STL and language features
 - Containers and complexity: `vector`, `deque`, `list`, `map`, `unordered_map`, `array`
