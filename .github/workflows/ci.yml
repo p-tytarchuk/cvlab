@@ -5,9 +5,10 @@ name: ci
 # automatically, and nothing else does.
 
 on:
-  push:
-    branches: [main, develop]
-  pull_request:
+  # Automatic triggers disabled for now - re-enable by uncommenting below.
+  # push:
+  #   branches: [main, develop]
+  # pull_request:
   workflow_dispatch:
 
 concurrency:
